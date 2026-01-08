@@ -61,7 +61,6 @@ def find_peptide_overlaps(query_sequences, proteome_dict, k=9, max_mismatches=1)
     Returns:
         Dict mapping each query to list of matches
     """
-    # TODO: Implement this function
     result = {}
     for A in query_sequences:
         all_matches = []
@@ -77,17 +76,17 @@ def find_peptide_overlaps(query_sequences, proteome_dict, k=9, max_mismatches=1)
     # g = len(proteome_dict)
     # Time: O(h * g * n * m * k) = O(10^12)
     # Polynomial time complexity 
-    # Space: O(h**g*n*m)
+    # Space: O(h*g*n*m)
 
 
 @pytest.fixture
-def sample_proteome(self):
+def sample_proteome():
     """Sample human proteome with one protein"""
     return {
         "A0A087WZT3": "MELSAEYLREKLQRDLEAEHVLPSPGGVGQVRGETAASETQLGS"
     }
 
-def test_exact_match_single_fragment(self, sample_proteome):
+def test_exact_match_single_fragment(sample_proteome):
     """Test finding exact matches for peptide fragments"""
     query_sequences = ["RDLEAEHVLP"]
     k = 9
@@ -114,7 +113,7 @@ def test_exact_match_single_fragment(self, sample_proteome):
     assert match2["matched_sequence"] == "DLEAEHVLP"
     assert match2["mismatches"] == []
 
-def test_match_with_one_mismatch(self, sample_proteome):
+def test_match_with_one_mismatch(sample_proteome):
     """Test finding matches with exactly one mismatch"""
     # MELSAEYLX differs from MELSAEYLR by one character (X vs R at position 8)
     query_sequences = ["MELSAEYLX"]
@@ -133,7 +132,7 @@ def test_match_with_one_mismatch(self, sample_proteome):
     assert len(match["mismatches"]) == 1
     assert match["mismatches"][0] == (8, 'X', 'R')
 
-def test_no_match_exceeds_mismatch_limit(self, sample_proteome):
+def test_no_match_exceeds_mismatch_limit(sample_proteome):
     """Test that sequences with >1 mismatches are not matched"""
     # MELSAEXYZ has 3 mismatches compared to MELSAEYLR
     query_sequences = ["MELSAEXYZ"]
@@ -145,7 +144,7 @@ def test_no_match_exceeds_mismatch_limit(self, sample_proteome):
     if "MELSAEXYZ" in results:
         assert len(results["MELSAEXYZ"]) == 0
 
-def test_multiple_queries(self, sample_proteome):
+def test_multiple_queries(sample_proteome):
     """Test processing multiple query sequences"""
     query_sequences = ["RDLEAEHVLP", "MELSAEYLX"]
     k = 9
@@ -158,7 +157,7 @@ def test_multiple_queries(self, sample_proteome):
     assert len(results["RDLEAEHVLP"]) == 2  # Two fragments match
     assert len(results["MELSAEYLX"]) == 1   # One fragment with mismatch
 
-def test_different_k_values(self, sample_proteome):
+def test_different_k_values(sample_proteome):
     """Test with different k-mer lengths"""
     query_sequences = ["RDLEAEHVLP"]
     
@@ -172,7 +171,7 @@ def test_different_k_values(self, sample_proteome):
     # With k=10, we get 1 fragment: RDLEAEHVLP (entire sequence)
     assert len(results_k10["RDLEAEHVLP"]) == 1
 
-def test_no_matches_found(self, sample_proteome):
+def test_no_matches_found(sample_proteome):
     """Test when query sequence has no matches in proteome"""
     query_sequences = ["ZZZZZZZZZ"]  # Unlikely to match
     k = 9
@@ -182,7 +181,7 @@ def test_no_matches_found(self, sample_proteome):
     if "ZZZZZZZZZ" in results:
         assert len(results["ZZZZZZZZZ"]) == 0
 
-def test_query_shorter_than_k(self, sample_proteome):
+def test_query_shorter_than_k(sample_proteome):
     """Test handling of query sequences shorter than k"""
     query_sequences = ["ABCD"]  # Only 4 amino acids
     k = 9
@@ -193,7 +192,7 @@ def test_query_shorter_than_k(self, sample_proteome):
     if "ABCD" in results:
         assert len(results["ABCD"]) == 0
 
-def test_edge_case_exact_k_length_query(self, sample_proteome):
+def test_edge_case_exact_k_length_query(sample_proteome):
     """Test when query length exactly equals k"""
     query_sequences = ["MELSAEYLR"]  # Exactly 9 amino acids
     k = 9
