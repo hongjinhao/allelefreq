@@ -74,7 +74,8 @@ def find_peptide_overlaps(query_sequences, proteome_dict, k=9, max_mismatches=1)
     return result
     # h = len(query_sequences)
     # g = len(proteome_dict)
-    # Time: O(h * g * n * m * k) = O(10^12)
+    # n = len(A)
+    # Time: O(h * g * n * m * k) roughly 10^12
     # Polynomial time complexity 
     # Space: O(h*g*n*m)
 
