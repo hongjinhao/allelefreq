@@ -479,6 +479,34 @@ def validate_frequency_sums(df, threshold=0.1, verbose=True):
     return valid_entries, invalid_entries
 
 
+def normalize_frequencies(df, verbose=True):
+    """
+    Normalize allele frequencies so that each (population, gene) combination sums to exactly 1.0.
+    
+    Args:
+        df: DataFrame with allele frequency data
+        verbose: Print progress information
+    
+    Returns:
+        DataFrame with normalized frequencies
+    """
+    df_result = df.copy()
+    
+    # Calculate frequency sums per (population, gene) combination
+    freq_sums = df_result.groupby(['population', 'gene'])['alleles_over_2n'].transform('sum')
+    
+    # Normalize frequencies
+    df_result['alleles_over_2n'] = df_result['alleles_over_2n'] / freq_sums
+    
+    if verbose:
+        # Verify normalization
+        new_sums = df_result.groupby(['population', 'gene'])['alleles_over_2n'].sum()
+        print(f"Normalized frequencies for {len(new_sums)} (population, gene) combinations")
+        print(f"  Frequency sum range after normalization: [{new_sums.min():.6f}, {new_sums.max():.6f}]")
+    
+    return df_result
+
+
 def remove_invalid_freq_combinations(df, threshold=0.1, verbose=True):
     """
     Remove (population, gene) combinations where frequency sums are outside [1-threshold, 1+threshold].
@@ -513,6 +541,7 @@ def collapse_to_4digit(df,
                        max_2digit_diff=0.005,
                        freq_sum_threshold=0.1,
                        min_sample_size=100,
+                       normalize=True,
                        verbose=True):
     """
     Complete pipeline to collapse allele data to 4-digit resolution with proper frequency sums.
@@ -524,7 +553,8 @@ def collapse_to_4digit(df,
     4. Remove studies with inconsistent 2-digit parent frequencies (optional)
     5. Remove all 2-digit entries
     6. Validate and remove (population, gene) combinations with invalid frequency sums
-    7. Filter by minimum sample size
+    7. Normalize frequencies so each (population, gene) sums to 1.0
+    8. Filter by minimum sample size
     
     Args:
         df: Input DataFrame with allele frequency data (should be cleaned first with clean_data)
@@ -532,10 +562,11 @@ def collapse_to_4digit(df,
         max_2digit_diff: Maximum allowed total frequency difference for 2-digit inconsistency
         freq_sum_threshold: Threshold for valid frequency sum range [1-threshold, 1+threshold]
         min_sample_size: Minimum sample size (n) to include
+        normalize: Whether to normalize frequencies so each (population, gene) sums to 1.0
         verbose: Print progress information
     
     Returns:
-        DataFrame with only 4-digit resolution alleles and validated frequency sums
+        DataFrame with only 4-digit resolution alleles and normalized frequency sums
     """
     if verbose:
         print("="*80)
@@ -583,10 +614,16 @@ def collapse_to_4digit(df,
         print(f"\n--- Step 5: Validate frequency sums ---")
     df_result = remove_invalid_freq_combinations(df_result, threshold=freq_sum_threshold, verbose=verbose)
     
-    # Step 7: Filter by minimum sample size
+    # Step 7: Normalize frequencies
+    if normalize:
+        if verbose:
+            print(f"\n--- Step 6: Normalize frequencies ---")
+        df_result = normalize_frequencies(df_result, verbose=verbose)
+    
+    # Step 8: Filter by minimum sample size
     if min_sample_size > 0:
         if verbose:
-            print(f"\n--- Step 6: Filter by sample size >= {min_sample_size} ---")
+            print(f"\n--- Step 7: Filter by sample size >= {min_sample_size} ---")
         before_studies = df_result['population'].nunique()
         df_result = df_result[df_result['n'] >= min_sample_size]
         if verbose:
