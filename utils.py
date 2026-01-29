@@ -507,12 +507,19 @@ def normalize_frequencies(df, verbose=True):
     return df_result
 
 
-def remove_invalid_freq_combinations(df, threshold=0.1, verbose=True):
+def remove_invalid_freq_combinations(df, threshold=0.1, method='population', verbose=True):
     """
-    Remove (population, gene) combinations where frequency sums are outside [1-threshold, 1+threshold].
+    Remove data with invalid frequency sums outside [1-threshold, 1+threshold].
+    
+    Args:
+        df: DataFrame with allele frequency data
+        threshold: Threshold for valid frequency sum range [1-threshold, 1+threshold]
+        method: 'population' to remove entire populations with any invalid gene,
+                'combination' to remove only invalid (population, gene) combinations
+        verbose: Print progress information
     
     Returns:
-        DataFrame with invalid combinations removed
+        DataFrame with invalid data removed
     """
     _, invalid_entries = validate_frequency_sums(df, threshold, verbose=False)
     
@@ -521,17 +528,29 @@ def remove_invalid_freq_combinations(df, threshold=0.1, verbose=True):
             print("All frequency sums are valid")
         return df
     
-    invalid_combinations = set(zip(invalid_entries['population'], invalid_entries['gene']))
+    if method == 'population':
+        # Remove entire populations that have at least one invalid gene combination
+        populations_to_remove = invalid_entries['population'].unique()
+        df_cleaned = df[~df['population'].isin(populations_to_remove)]
+        
+        if verbose:
+            print(f"Removed {len(populations_to_remove)} populations with at least one invalid gene combination")
+            print(f"  Shape: {df.shape} -> {df_cleaned.shape}")
+            print(f"  Studies: {df['population'].nunique()} -> {df_cleaned['population'].nunique()}")
     
-    df_result = df.copy()
-    df_result['pop_gene'] = list(zip(df_result['population'], df_result['gene']))
-    df_cleaned = df_result[~df_result['pop_gene'].isin(invalid_combinations)]
-    df_cleaned = df_cleaned.drop(columns=['pop_gene'])
-    
-    if verbose:
-        print(f"Removed {len(invalid_combinations)} invalid (population, gene) combinations")
-        print(f"  Shape: {df.shape} -> {df_cleaned.shape}")
-        print(f"  Studies: {df['population'].nunique()} -> {df_cleaned['population'].nunique()}")
+    else:  # method == 'combination'
+        # Remove only invalid (population, gene) combinations
+        invalid_combinations = set(zip(invalid_entries['population'], invalid_entries['gene']))
+        
+        df_result = df.copy()
+        df_result['pop_gene'] = list(zip(df_result['population'], df_result['gene']))
+        df_cleaned = df_result[~df_result['pop_gene'].isin(invalid_combinations)]
+        df_cleaned = df_cleaned.drop(columns=['pop_gene'])
+        
+        if verbose:
+            print(f"Removed {len(invalid_combinations)} invalid (population, gene) combinations")
+            print(f"  Shape: {df.shape} -> {df_cleaned.shape}")
+            print(f"  Studies: {df['population'].nunique()} -> {df_cleaned['population'].nunique()}")
     
     return df_cleaned
 
@@ -542,6 +561,7 @@ def collapse_to_4digit(df,
                        freq_sum_threshold=0.1,
                        min_sample_size=100,
                        normalize=True,
+                       cleaning_method='population',
                        verbose=True):
     """
     Complete pipeline to collapse allele data to 4-digit resolution with proper frequency sums.
@@ -552,7 +572,7 @@ def collapse_to_4digit(df,
     3. Collapse 6-digit → 4-digit alleles
     4. Remove studies with inconsistent 2-digit parent frequencies (optional)
     5. Remove all 2-digit entries
-    6. Validate and remove (population, gene) combinations with invalid frequency sums
+    6. Validate and remove invalid frequency combinations (by population or combination)
     7. Normalize frequencies so each (population, gene) sums to 1.0
     8. Filter by minimum sample size
     
@@ -563,6 +583,8 @@ def collapse_to_4digit(df,
         freq_sum_threshold: Threshold for valid frequency sum range [1-threshold, 1+threshold]
         min_sample_size: Minimum sample size (n) to include
         normalize: Whether to normalize frequencies so each (population, gene) sums to 1.0
+        cleaning_method: 'population' to remove entire populations with any invalid gene (recommended),
+                        'combination' to remove only invalid (population, gene) combinations
         verbose: Print progress information
     
     Returns:
@@ -611,8 +633,9 @@ def collapse_to_4digit(df,
     
     # Step 6: Validate and remove invalid frequency combinations
     if verbose:
-        print(f"\n--- Step 5: Validate frequency sums ---")
-    df_result = remove_invalid_freq_combinations(df_result, threshold=freq_sum_threshold, verbose=verbose)
+        print(f"\n--- Step 5: Validate frequency sums (method={cleaning_method}) ---")
+    df_result = remove_invalid_freq_combinations(df_result, threshold=freq_sum_threshold, 
+                                                  method=cleaning_method, verbose=verbose)
     
     # Step 7: Normalize frequencies
     if normalize:
