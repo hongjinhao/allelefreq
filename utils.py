@@ -558,46 +558,45 @@ def remove_invalid_freq_combinations(df, threshold=0.1, method='population', ver
 def collapse_to_4digit(df, 
                        remove_inconsistent_studies=True,
                        max_2digit_diff=0.005,
-                       freq_sum_threshold=0.1,
-                       min_sample_size=100,
-                       normalize=True,
-                       cleaning_method='population',
                        verbose=True):
     """
-    Complete pipeline to collapse allele data to 4-digit resolution with proper frequency sums.
+    Collapse allele data to 4-digit resolution only.
+    
+    Prerequisites (must be done before calling this function):
+    - Clean data with clean_data():
+        * Filter for HLA group only
+        * Filter for Class I alleles (A, B, C)
+        * Remove G-group rows
     
     Pipeline steps:
-    1. Add resolution column
-    2. Collapse 8-digit → 6-digit alleles
-    3. Collapse 6-digit → 4-digit alleles
-    4. Remove studies with inconsistent 2-digit parent frequencies (optional)
-    5. Remove all 2-digit entries
-    6. Validate and remove invalid frequency combinations (by population or combination)
-    7. Normalize frequencies so each (population, gene) sums to 1.0
-    8. Filter by minimum sample size
+    1. Collapse 8-digit → 6-digit alleles
+       - Parent (6-digit) gets freq = max(parent_freq, sum of 8-digit children freq)
+    
+    2. Collapse 6-digit → 4-digit alleles
+       - Parent (4-digit) gets freq = max(parent_freq, sum of 6-digit children freq)
+    
+    3. Find and remove studies where 2-digit parent freq > sum of 4-digit children
+       - Uses max_2digit_diff threshold (default: 0.005)
+    
+    4. Remove 2-digit entries
     
     Args:
         df: Input DataFrame with allele frequency data (should be cleaned first with clean_data)
         remove_inconsistent_studies: Whether to remove studies where 2-digit parent > children sum
-        max_2digit_diff: Maximum allowed total frequency difference for 2-digit inconsistency
-        freq_sum_threshold: Threshold for valid frequency sum range [1-threshold, 1+threshold]
-        min_sample_size: Minimum sample size (n) to include
-        normalize: Whether to normalize frequencies so each (population, gene) sums to 1.0
-        cleaning_method: 'population' to remove entire populations with any invalid gene (recommended),
-                        'combination' to remove only invalid (population, gene) combinations
+        max_2digit_diff: Maximum allowed total frequency difference for 2-digit inconsistency (default: 0.005)
         verbose: Print progress information
     
     Returns:
-        DataFrame with only 4-digit resolution alleles and normalized frequency sums
+        DataFrame with only 4-digit resolution alleles
     """
     if verbose:
         print("="*80)
-        print("Starting collapse_to_4digit pipeline")
+        print("Starting collapse_to_4digit")
         print("="*80)
         print(f"Input shape: {df.shape}")
         print(f"Input studies: {df['population'].nunique()}")
     
-    # Step 1: Add resolution column if not present
+    # Add resolution column if not present
     df_result = df.copy()
     if 'resolution' not in df_result.columns:
         df_result['resolution'] = df_result['allele'].apply(get_allele_resolution)
@@ -606,23 +605,24 @@ def collapse_to_4digit(df,
         print(f"\nResolution distribution before collapse:")
         print(df_result['resolution'].value_counts().to_dict())
     
-    # Step 2: Collapse 8-digit to 6-digit
+    # Step 1: Collapse 8-digit → 6-digit alleles
     if verbose:
-        print(f"\n--- Step 1: Collapse 8-digit to 6-digit ---")
+        print(f"\n--- Step 1: Collapse 8-digit → 6-digit alleles ---")
     df_result, _ = collapse_8digit_to_6digit(df_result, verbose=verbose)
     
-    # Step 3: Collapse 6-digit to 4-digit
+    # Step 2: Collapse 6-digit → 4-digit alleles
     if verbose:
-        print(f"\n--- Step 2: Collapse 6-digit to 4-digit ---")
+        print(f"\n--- Step 2: Collapse 6-digit → 4-digit alleles ---")
     df_result, _ = collapse_6digit_to_4digit(df_result, verbose=verbose)
     
-    # Step 4: Remove inconsistent 2-digit studies
+    # Step 3: Find and remove studies where 2-digit parent freq > sum of 4-digit children
     if remove_inconsistent_studies:
         if verbose:
-            print(f"\n--- Step 3: Remove inconsistent 2-digit studies ---")
+            print(f"\n--- Step 3: Remove studies where 2-digit parent freq > sum of 4-digit children ---")
+            print(f"  Using max_2digit_diff threshold: {max_2digit_diff}")
         df_result = remove_inconsistent_2digit_studies(df_result, max_total_diff=max_2digit_diff, verbose=verbose)
     
-    # Step 5: Remove all 2-digit entries
+    # Step 4: Remove 2-digit entries
     if verbose:
         print(f"\n--- Step 4: Remove 2-digit entries ---")
     before_count = len(df_result)
@@ -631,22 +631,87 @@ def collapse_to_4digit(df,
         print(f"Removed {before_count - len(df_result)} 2-digit entries")
         print(f"  Shape: {before_count} -> {len(df_result)}")
     
-    # Step 6: Validate and remove invalid frequency combinations
+    # Final summary
     if verbose:
-        print(f"\n--- Step 5: Validate frequency sums (method={cleaning_method}) ---")
+        print(f"\n{'='*80}")
+        print("collapse_to_4digit complete!")
+        print(f"{'='*80}")
+        print(f"Final shape: {df_result.shape}")
+        print(f"Final studies: {df_result['population'].nunique()}")
+        print(f"Resolution distribution: {df_result['resolution'].value_counts().to_dict()}")
+    
+    return df_result
+
+
+def clean_and_normalize(df,
+                        freq_sum_threshold=0.1,
+                        min_sample_size=100,
+                        normalize=True,
+                        cleaning_method='population',
+                        verbose=True):
+    """
+    Clean, validate, and normalize allele frequency data.
+    
+    Pipeline steps:
+    1. Validate and remove studies with at least one (population, gene) combination with invalid frequency sums
+       - Validate that sums are within 1±threshold per gene per population (freq_sum_threshold=0.1)
+       - Example: Gene A of population "China han" has freq sum of 1.02 = valid
+       - Example: Gene B of population "China han" has freq sum of 0.81 = invalid → discard entire "China han" population
+    
+    2. Remove entries where freq is 0
+    
+    3. Normalize frequencies to 1 in each (population, gene) combination
+    
+    4. Filter by minimum sample size (min_sample_size=100)
+    
+    Args:
+        df: Input DataFrame with allele frequency data (should already be collapsed to 4-digit)
+        freq_sum_threshold: Threshold for valid frequency sum range [1-threshold, 1+threshold] (default: 0.1)
+        min_sample_size: Minimum sample size (n) to include (default: 100)
+        normalize: Whether to normalize frequencies so each (population, gene) sums to 1.0
+        cleaning_method: 'population' to remove entire populations with any invalid gene (recommended),
+                        'combination' to remove only invalid (population, gene) combinations
+        verbose: Print progress information
+    
+    Returns:
+        DataFrame with validated, cleaned, and normalized frequencies
+    """
+    if verbose:
+        print("="*80)
+        print("Starting clean_and_normalize")
+        print("="*80)
+        print(f"Input shape: {df.shape}")
+        print(f"Input studies: {df['population'].nunique()}")
+    
+    df_result = df.copy()
+    
+    # Step 1: Validate and remove studies with at least one (population, gene) combination with invalid frequency sums
+    if verbose:
+        print(f"\n--- Step 1: Validate and remove studies with invalid frequency sums ---")
+        print(f"  Valid range: [1-{freq_sum_threshold}, 1+{freq_sum_threshold}] = [{1-freq_sum_threshold}, {1+freq_sum_threshold}]")
+        print(f"  Method: {cleaning_method} (remove entire population if any gene is invalid)")
     df_result = remove_invalid_freq_combinations(df_result, threshold=freq_sum_threshold, 
                                                   method=cleaning_method, verbose=verbose)
     
-    # Step 7: Normalize frequencies
+    # Step 2: Remove entries where freq is 0
+    if verbose:
+        print(f"\n--- Step 2: Remove entries where freq is 0 ---")
+    before_count = len(df_result)
+    df_result = df_result[df_result['alleles_over_2n'] > 0]
+    if verbose:
+        print(f"Removed {before_count - len(df_result)} entries with 0 frequency")
+        print(f"  Shape: {before_count} -> {len(df_result)}")
+    
+    # Step 3: Normalize frequencies to 1 in each (population, gene) combination
     if normalize:
         if verbose:
-            print(f"\n--- Step 6: Normalize frequencies ---")
+            print(f"\n--- Step 3: Normalize frequencies to 1 in each (population, gene) combination ---")
         df_result = normalize_frequencies(df_result, verbose=verbose)
     
-    # Step 8: Filter by minimum sample size
+    # Step 4: Filter by minimum sample size
     if min_sample_size > 0:
         if verbose:
-            print(f"\n--- Step 7: Filter by sample size >= {min_sample_size} ---")
+            print(f"\n--- Step 4: Filter by minimum sample size (n >= {min_sample_size}) ---")
         before_studies = df_result['population'].nunique()
         df_result = df_result[df_result['n'] >= min_sample_size]
         if verbose:
@@ -655,11 +720,10 @@ def collapse_to_4digit(df,
     # Final summary
     if verbose:
         print(f"\n{'='*80}")
-        print("Pipeline complete!")
+        print("clean_and_normalize complete!")
         print(f"{'='*80}")
         print(f"Final shape: {df_result.shape}")
         print(f"Final studies: {df_result['population'].nunique()}")
-        print(f"Resolution distribution: {df_result['resolution'].value_counts().to_dict()}")
     
     return df_result
 
