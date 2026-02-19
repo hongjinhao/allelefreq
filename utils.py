@@ -35,8 +35,8 @@ def extract_allele_parts(allele):
     
     allele_str = str(allele)
     
-    # Pattern: LOCUS*XX:XX:XX:XX
-    match = re.match(r'([A-Z]+)\*(\d+)(?::(\d+))?(?::(\d+))?(?::(\d+))?', allele_str)
+    # Pattern: LOCUS*XX:XX:XX:XX (locus may contain digits, e.g. DRB1, DQB1)
+    match = re.match(r'([A-Z][A-Z0-9]*)\*(\d+)(?::(\d+))?(?::(\d+))?(?::(\d+))?', allele_str)
     
     if not match:
         return None
@@ -194,12 +194,14 @@ def collapse_8digit_to_6digit(df, verbose=True):
             if parent_6d is None:
                 continue
             
+            # Recompute pop_mask in case df_result index changed after a concat
+            pop_mask = df_result['population'] == pop
             # Sum of children frequencies
-            children_mask = (pop_mask) & (df_result['parent_6digit'] == parent_6d)
+            children_mask = pop_mask & (df_result['parent_6digit'] == parent_6d)
             children_freq_sum = df_result.loc[children_mask, 'alleles_over_2n'].sum()
             
             # Check if 6-digit parent exists
-            parent_mask = (pop_mask) & (df_result['allele'] == parent_6d)
+            parent_mask = pop_mask & (df_result['allele'] == parent_6d)
             parent_exists = parent_mask.sum() > 0
             
             if parent_exists:
@@ -296,12 +298,14 @@ def collapse_6digit_to_4digit(df, verbose=True):
             if parent_4d is None:
                 continue
             
+            # Recompute pop_mask in case df_result index changed after a concat
+            pop_mask = df_result['population'] == pop
             # Sum of children frequencies
-            children_mask = (pop_mask) & (df_result['parent_4digit'] == parent_4d)
+            children_mask = pop_mask & (df_result['parent_4digit'] == parent_4d)
             children_freq_sum = df_result.loc[children_mask, 'alleles_over_2n'].sum()
             
             # Check if 4-digit parent exists
-            parent_mask = (pop_mask) & (df_result['allele'] == parent_4d)
+            parent_mask = pop_mask & (df_result['allele'] == parent_4d)
             parent_exists = parent_mask.sum() > 0
             
             if parent_exists:
