@@ -168,6 +168,7 @@ def collapse_8digit_to_6digit(df, verbose=True):
         df_result['resolution'] = df_result['allele'].apply(get_allele_resolution)
     
     # Add parent allele column for 8-digit entries
+    # if the allele is A*01:01:01:01 (8-digit), it extracts its 6-digit parent A*01:01:01.
     df_result['parent_6digit'] = df_result.apply(
         lambda row: extract_allele_parts(row['allele'])['6digit'] 
         if row['resolution'] == '8-digit' and extract_allele_parts(row['allele']) 
