@@ -4,9 +4,9 @@
 
 ### What is this document about?
 
-This explains where the numbers in [`bingsong_output/nmdp_population_sizes.csv`](bingsong_output/nmdp_population_sizes.csv) come from, and why the 21 NMDP groups are split the way they are.
+This explains where the numbers in [`nmdp_population_sizes.csv`](nmdp_population_sizes.csv) come from, and why the 21 NMDP groups are split the way they are.
 
-Note: this file lives in the same `bingsong_output/` folder as the per-population HLA class I frequency CSVs, but it is **not derived from or joined with them** — nothing in `bingsong_hla_task.ipynb` reads this file. The frequency CSVs come from HLA study data (a side task for collaborator Bing Song); this file is an independent Census/ACS demographic estimate of how many people belong to each of the 21 NMDP groups. They happen to share the same 21 group labels and the same output folder, but are otherwise unrelated pieces of work.
+Note: this file previously lived in the same `bingsong_output/` folder as the per-population HLA class I frequency CSVs (now under `bingsong_side_task/`), but it is **not derived from or joined with them** — nothing in `bingsong_hla_task.ipynb` reads this file. The frequency CSVs come from HLA study data (a side task for collaborator Bing Song); this file is an independent Census/ACS demographic estimate of how many people belong to each of the 21 NMDP groups. They happened to share the same 21 group labels and, at one point, the same output folder, but are otherwise unrelated pieces of work.
 
 ### The problem being solved
 
@@ -17,7 +17,7 @@ The **NMDP (National Marrow Donor Program)**, which runs the U.S. bone marrow do
 
 Donors self-report race/ethnicity in a much coarser way than these 21 groups, so the NMDP subdivides (and sometimes merges) categories to satisfy both criteria — e.g. "Black or African American" is split four ways by migration history (U.S.-born vs. sub-Saharan African-born vs. via Central/South America vs. via the Caribbean), because those subpopulations have measurably different HLA allele distributions despite sharing a single Census race category.
 
-The task here is: **for each of the 21 NMDP groups, estimate how many people in the U.S. actually belong to it**, using public Census/ACS data. That population-size estimate is what [`nmdp_population_sizes.csv`](bingsong_output/nmdp_population_sizes.csv) records — a standalone demographic reference, independent of the HLA frequency work also stored under `bingsong_output/`.
+The task here is: **for each of the 21 NMDP groups, estimate how many people in the U.S. actually belong to it**, using public Census/ACS data. That population-size estimate is what [`nmdp_population_sizes.csv`](nmdp_population_sizes.csv) records — a standalone demographic reference, independent of the HLA frequency work in `bingsong_side_task/`.
 
 ### Data sources used
 
@@ -36,7 +36,7 @@ The task here is: **for each of the 21 NMDP groups, estimate how many people in 
 | Native American | North American Amerindian, Alaska Native or Aleut, American Indian South or Central America | 1.74m / 0.12m / 0.42m |
 | Native Hawaiian or Other Pacific Islander | Hawaiian or other Pacific Islander, Caribbean Indian | 0.63m / 0.057m |
 
-The full table with exact figures is in [`nmdp_population_sizes.csv`](bingsong_output/nmdp_population_sizes.csv).
+The full table with exact figures is in [`nmdp_population_sizes.csv`](nmdp_population_sizes.csv).
 
 ---
 

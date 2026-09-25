@@ -1,9 +1,9 @@
 # Population Coverage: Class I vs. Class II Output
 
-This documents which populations appear in [`top_100_class1.csv`](top_100_class1.csv) and [`top_100_class2.csv`](top_100_class2.csv), split into:
+This documents which populations appear in [`top_100_class1.csv`](../allelefreq_analysis/top_100_class1.csv) and [`top_100_class2.csv`](../allelefreq_analysis/top_100_class2.csv), split into:
 
 1. NMDP-related populations present in the output
-2. NMDP populations **missing** from the output (compared against the 21 official groups in [`bingsong_output/nmdp_population_sizes.csv`](bingsong_output/nmdp_population_sizes.csv), documented in [`NMDP_POPULATION_SIZES.md`](NMDP_POPULATION_SIZES.md))
+2. NMDP populations **missing** from the output (compared against the 21 official groups in [`nmdp_population_sizes.csv`](nmdp_population_sizes.csv), documented in [`NMDP_POPULATION_SIZES.md`](NMDP_POPULATION_SIZES.md))
 3. Non-NMDP populations present in the output
 
 **Note on spelling:** the output CSVs consistently spell the three Caribbean NMDP groups as "Caribean" (missing a "b"), while the reference file spells them "Caribbean". These are treated as the same group below (e.g. `USA NMDP Caribean Black` = `USA NMDP Caribbean Black`).

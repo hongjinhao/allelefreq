@@ -51,9 +51,14 @@ The same cleaned data was used to ask which allele is the most common worldwide.
 | Pipeline run (class I) | `test_pipeline.ipynb` → `4_digit.csv` → `cleaned_data_normal.csv` | Final cleaned class I dataset |
 | Pipeline run (class II) | `HLA-class2.ipynb` → `4_digit_class2.csv` → `cleaned_data_normal_class2.csv` | Same pipeline for DRB1/DQA1/DQB1/DPA1/DPB1 |
 | **Main outputs** | `find_most_common.ipynb` → **`top_100_class1.csv`**, **`top_100_class2.csv`** | Top 100 alleles per study, for class I and class II, plus the most-common-allele analysis |
-| Side task | `bingsong_hla_task.ipynb` → `bingsong_output/*.csv` | Per-population class I frequency files for 21 US NMDP populations, requested by a collaborator (Bing Song) |
-| Unrelated side task | `task3.ipynb`, `task3-pytest-*.py`, `uniprotkb_human_ref_proteome_dict.pkl` | Peptide k-mer matching against the human proteome (string-matching exercise) |
-| Other | `hla_embeddings_all.pkl`, `top_100.csv`, `venvName/` | Allele embedding lookup for the side task, an older top-100 export, and the Python virtualenv |
+
+Everything else referenced from here used to live in this same folder but now sits in its own top-level task folder — see [`project_overview.md`](../project_overview.md) for the full repo layout:
+
+| Kind | Location | Purpose |
+|---|---|---|
+| Side task | `../bingsong_side_task/bingsong_hla_task.ipynb` → `bingsong_output/*.csv` | Per-population class I frequency files for 21 US NMDP populations, requested by a collaborator (Bing Song) |
+| Unrelated side task | `../task3_string_matching/` | Peptide k-mer matching against the human proteome (string-matching exercise) |
+| Archived | `../archive/top_100.csv` | An older, pre-class-split top-100 export, no longer referenced by any notebook |
 
 ---
 
@@ -349,13 +354,13 @@ Rerunning the ranking on the current `cleaned_data_normal.csv`, which has 81 stu
 | DQA1 | DQA1\*05:03 | 21.1% | **Unreliable.** Only 4 studies, and the value is driven by one (Pima, 80%). |
 | DPA1 | DPA1\*01:03 | 49.2% | Only 4 studies. |
 
-### 2.7 Side task: Bing Song's NMDP files (`bingsong_hla_task.ipynb`)
+### 2.7 Side task: Bing Song's NMDP files (`../bingsong_side_task/bingsong_hla_task.ipynb`)
 A collaborator needed class I frequencies for 21 US NMDP populations in a specific format. The rules differ from the main pipeline:
 - Sample size doesn't matter, and frequencies are **not** normalised.
 - **Collapse rule is different.** If a 4-digit parent exists, its frequency is kept and the children are ignored. Only if there is no parent are the children summed. This is "parent wins", not `max`. It was implemented locally as `collapse_pass()` because the `utils` version crashed on this subset with an `IndexError` caused by index misalignment.
 - 2-digit rows are dropped.
 - The asterisk is stripped (`A*02:01` → `A02:01`), and only alleles present in `hla_embeddings_all.pkl` are kept. That file contains 8,722 alleles, each with a 32-dimensional embedding. 73 rows were dropped, all of them null or questionable alleles with an `N`/`Q` suffix.
-- The output is one CSV per population in `bingsong_output/`. `nmdp_population_sizes.csv` holds estimated US population sizes per group, which is useful for population-weighted averaging later.
+- The output is one CSV per population in `../bingsong_side_task/bingsong_output/`. `../population_size/nmdp_population_sizes.csv` holds estimated US population sizes per group (a separate, unrelated deliverable — see [`NMDP_POPULATION_SIZES.md`](../population_size/NMDP_POPULATION_SIZES.md)), which is useful for population-weighted averaging later.
 
 ### 2.8 Caveats and things to keep in mind
 
